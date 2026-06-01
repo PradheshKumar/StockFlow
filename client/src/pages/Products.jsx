@@ -1,18 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
 import TopBar from '../components/TopBar';
+import { productsApi } from '../lib/api';
 
-const MOCK_PRODUCTS = [
-  { id: 1, name: 'Wireless Headphones Pro', sku: 'WH-PRO-001', qty: 1240, price: 249.00, status: 'in-stock' },
-  { id: 2, name: 'Mechanical Keyboard RGB',  sku: 'KB-MECH-99', qty: 12,   price: 129.50, status: 'low-stock' },
-  { id: 3, name: 'Ergonomic Mouse Z',         sku: 'MS-ERG-042', qty: 0,    price: 89.00,  status: 'out' },
-  { id: 4, name: '4K Monitor 27"',            sku: 'MN-4K-27V2', qty: 45,   price: 499.00, status: 'in-stock' },
-  { id: 5, name: 'Thunderbolt Dock Hub',      sku: 'HB-TB3-X1',  qty: 8,    price: 199.99, status: 'low-stock' },
-  { id: 6, name: 'Webcam Ultra HD',           sku: 'WC-UHD-500', qty: 312,  price: 159.00, status: 'in-stock' },
-];
+function getStatus(product) {
+  const qty = parseInt(product.quantity, 10) || 0;
+  if (qty === 0) return 'out';
+  if (qty <= product.lowStockThreshold) return 'low-stock';
+  return 'in-stock';
+}
 
-function StatusBadge({ status }) {
+function StatusBadge({ product }) {
+  const status = getStatus(product);
   const map = {
     'in-stock':  'bg-green-100 text-green-800 border-green-200',
     'low-stock': 'bg-amber-100 text-amber-800 border-amber-200',
@@ -28,15 +28,39 @@ function StatusBadge({ status }) {
 
 export default function Products() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [products, setProducts] = useState(MOCK_PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const [search, setSearch]     = useState('');
+  const [deleting, setDeleting] = useState(null);
 
-  const filtered = products.filter(p =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const load = useCallback((q = '') => {
+    setLoading(true);
+    productsApi.getAll(q)
+      .then(res => setProducts(res.data))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  function handleDelete(id) {
-    setProducts(ps => ps.filter(p => p.id !== id));
+  useEffect(() => { load(); }, [load]);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => load(search), 300);
+    return () => clearTimeout(t);
+  }, [search, load]);
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this product? This cannot be undone.')) return;
+    setDeleting(id);
+    try {
+      await productsApi.remove(id);
+      setProducts(ps => ps.filter(p => p.id !== id));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   return (
@@ -64,6 +88,13 @@ export default function Products() {
           </button>
         </div>
 
+        {error && (
+          <div className="px-lg py-md bg-error-container text-on-error-container rounded-xl flex items-center gap-2">
+            <span className="material-symbols-outlined">error</span>
+            {error}
+          </div>
+        )}
+
         <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -77,13 +108,33 @@ export default function Products() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {filtered.map(p => (
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="px-md py-xl text-center text-on-surface-variant">
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Loading products…
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {!loading && products.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-md py-xl text-center text-on-surface-variant text-body-md">
+                    {search ? 'No products match your search.' : 'No products yet. Add your first one!'}
+                  </td>
+                </tr>
+              )}
+              {!loading && products.map(p => (
                 <tr key={p.id} className="hover:bg-surface-bright transition-colors group">
                   <td className="px-md py-4 text-body-md font-semibold">{p.name}</td>
                   <td className="px-md py-4 font-mono text-mono-sm text-on-surface-variant">{p.sku}</td>
-                  <td className="px-md py-4 text-body-md text-right">{p.qty.toLocaleString()}</td>
-                  <td className="px-md py-4 text-body-md text-right">${p.price.toFixed(2)}</td>
-                  <td className="px-md py-4"><StatusBadge status={p.status} /></td>
+                  <td className="px-md py-4 text-body-md text-right">{parseInt(p.quantity, 10).toLocaleString()}</td>
+                  <td className="px-md py-4 text-body-md text-right">${Number(p.sellPrice).toFixed(2)}</td>
+                  <td className="px-md py-4"><StatusBadge product={p} /></td>
                   <td className="px-md py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -95,33 +146,32 @@ export default function Products() {
                       </button>
                       <button
                         onClick={() => handleDelete(p.id)}
-                        className="p-1.5 text-on-surface-variant hover:text-error transition-colors"
+                        disabled={deleting === p.id}
+                        className="p-1.5 text-on-surface-variant hover:text-error transition-colors disabled:opacity-50"
                         title="Delete"
                       >
-                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                        {deleting === p.id
+                          ? <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                          : <span className="material-symbols-outlined text-[20px]">delete</span>
+                        }
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-md py-12 text-center text-on-surface-variant text-body-md">
-                    No products found.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-label-md text-on-surface-variant/60 px-sm">
-          <span>Showing 1–{filtered.length} of {products.length} products</span>
-          <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[16px]">info</span>
-            Last updated: Just now
-          </span>
-        </div>
+        {!loading && (
+          <div className="flex items-center justify-between text-label-md text-on-surface-variant/60 px-sm">
+            <span>Showing {products.length} product{products.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ''}</span>
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">info</span>
+              Last updated: Just now
+            </span>
+          </div>
+        )}
       </main>
     </AppLayout>
   );

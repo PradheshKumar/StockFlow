@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // ── Organizations ─────────────────────────────────────────
@@ -25,7 +25,7 @@ export const users = sqliteTable('users', {
 export const products = sqliteTable('products', {
   id:                  text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name:                text('name').notNull(),
-  sku:                 text('sku').notNull().unique(),
+  sku:                 text('sku').notNull(),
   description:         text('description').notNull().default(''),
   quantity:            text('quantity').notNull().default('0'),
   lowStockThreshold:   integer('low_stock_threshold').notNull().default(10),
@@ -35,4 +35,6 @@ export const products = sqliteTable('products', {
   createdAt:           text('created_at').notNull().default(sql`(datetime('now'))`),
   updatedAt:           text('updated_at').notNull().default(sql`(datetime('now'))`),
   updatedBy:           text('updated_by').references(() => users.id),
-});
+}, (t) => [
+  uniqueIndex('products_sku_org_unique').on(t.sku, t.organizationId),
+]);

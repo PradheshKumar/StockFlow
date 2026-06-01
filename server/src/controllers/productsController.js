@@ -50,7 +50,7 @@ export async function create(req, res, next) {
     res.status(201).json({ success: true, data: created });
   } catch (err) {
     if (err.message?.includes('UNIQUE')) {
-      return res.status(409).json({ success: false, message: 'SKU already exists' });
+      return res.status(409).json({ success: false, message: 'SKU already exists in this organization' });
     }
     next(err);
   }
@@ -82,7 +82,7 @@ export async function update(req, res, next) {
     res.json({ success: true, data: updated });
   } catch (err) {
     if (err.message?.includes('UNIQUE')) {
-      return res.status(409).json({ success: false, message: 'SKU already exists' });
+      return res.status(409).json({ success: false, message: 'SKU already exists in this organization' });
     }
     next(err);
   }
@@ -115,7 +115,8 @@ export async function adjustStock(req, res, next) {
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const currentQty = parseInt(product.quantity, 10) || 0;
-    const newQty = Math.max(0, currentQty + adjustment);
+    const delta = Math.trunc(Number(adjustment));
+    const newQty = Math.max(0, currentQty + delta);
 
     const [updated] = await db
       .update(products)

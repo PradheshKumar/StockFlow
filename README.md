@@ -113,6 +113,28 @@ Protected endpoints (✓) require `Authorization: Bearer <token>`.
 
 ---
 
+## Security
+
+The following protections are implemented in the backend:
+
+| Area | Measure |
+|------|---------|
+| **Security headers** | [`helmet`](https://helmetjs.github.io/) sets `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, removes `X-Powered-By`, and more |
+| **Brute-force protection** | `express-rate-limit` caps `/api/auth/login` and `/api/auth/signup` at 20 requests per 15 minutes per IP |
+| **JWT authentication** | All non-auth endpoints require a signed JWT (`Authorization: Bearer <token>`). The server refuses to start if `JWT_SECRET` is unset. |
+| **Password hashing** | Passwords are hashed with bcrypt (cost factor 10) and never returned in any response |
+| **Timing-safe login** | bcrypt comparison always runs regardless of whether the email exists, preventing timing-based user enumeration |
+| **SQL injection** | All queries go through Drizzle ORM's parameterized query builder — no raw SQL with user input |
+| **Tenant isolation** | Every product/settings query is scoped to `organizationId` from the JWT — users cannot access another org's data |
+| **Input validation** | Required fields, email format (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`), non-negative numbers, and integer-only stock adjustments are validated before any DB operation |
+| **Email normalization** | Emails are lowercased and trimmed on signup and login, preventing duplicate accounts via case variation |
+| **Mass assignment** | Controllers destructure only whitelisted fields from request bodies — extra fields are silently ignored |
+| **Request size limit** | JSON bodies capped at 10 KB (`express.json({ limit: '10kb' })`) |
+| **CORS** | Origin restricted to `CLIENT_ORIGIN` env var (defaults to `http://localhost:5173`); methods and headers explicitly whitelisted |
+| **Error leakage** | 5xx error messages are replaced with a generic string in `NODE_ENV=production`; stack traces only appear in development |
+
+---
+
 ## Other Scripts
 
 | Command | Description |

@@ -1,4 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { authApi } from '../lib/api';
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: 'dashboard',   label: 'Dashboard' },
@@ -8,6 +10,13 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const { clearAuth } = useAuth();
+
+  async function handleLogout() {
+    try { await authApi.logout(); } catch { /* stateless — ignore errors */ }
+    clearAuth();
+    navigate('/login');
+  }
 
   return (
     <aside className="w-[240px] h-screen fixed left-0 top-0 flex flex-col py-lg px-md bg-surface border-r border-outline-variant z-50">
@@ -42,7 +51,7 @@ export default function Sidebar() {
 
       <div className="mt-auto border-t border-outline-variant pt-md">
         <button
-          onClick={() => navigate('/login')}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-xl text-label-md"
         >
           <span className="material-symbols-outlined text-[22px]">logout</span>

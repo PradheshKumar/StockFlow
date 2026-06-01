@@ -11,7 +11,10 @@ router.post(
   validate({
     body: {
       name:             (v) => !v?.trim() && 'Name is required',
-      email:            (v) => !v?.trim() && 'Email is required',
+      email:            (v) => {
+        if (!v?.trim()) return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) return 'Email is invalid';
+      },
       password:         (v) => (!v || v.length < 6) && 'Password must be at least 6 characters',
       organizationName: (v) => !v?.trim() && 'Organization name is required',
     },

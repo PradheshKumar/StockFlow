@@ -1,18 +1,29 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { authApi } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { storeAuth } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    const { email, password } = Object.fromEntries(new FormData(e.target));
+    try {
+      const { token, user } = await authApi.login(email, password);
+      storeAuth(token, user);
       navigate('/dashboard');
-    }, 1200);
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -33,6 +44,13 @@ export default function Login() {
           </header>
 
           <form onSubmit={handleSubmit} className="space-y-lg">
+            {error && (
+              <div className="px-md py-sm bg-error-container text-on-error-container rounded-lg text-body-md flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                {error}
+              </div>
+            )}
+
             <div className="space-y-sm">
               <label className="block text-label-md text-on-surface-variant uppercase tracking-wider" htmlFor="email">
                 Email Address
@@ -41,9 +59,11 @@ export default function Login() {
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px] group-focus-within:text-primary transition-colors">mail</span>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="name@company.com"
                   required
+                  autoComplete="email"
                   className="w-full pl-10 pr-md py-3 bg-surface border border-outline-variant rounded-lg text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
               </div>
@@ -57,9 +77,11 @@ export default function Login() {
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px] group-focus-within:text-primary transition-colors">lock</span>
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   required
+                  autoComplete="current-password"
                   className="w-full pl-10 pr-10 py-3 bg-surface border border-outline-variant rounded-lg text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
                 <button
@@ -101,17 +123,6 @@ export default function Login() {
           </footer>
         </div>
 
-        <div className="mt-xl flex items-center gap-md">
-          <div className="flex items-center gap-xs text-on-surface-variant">
-            <span className="material-symbols-outlined text-[16px]">verified_user</span>
-            <span className="text-label-md">Secure Login</span>
-          </div>
-          <div className="w-1 h-1 bg-outline-variant rounded-full" />
-          <div className="flex items-center gap-xs text-on-surface-variant">
-            <span className="material-symbols-outlined text-[16px]">support_agent</span>
-            <span className="text-label-md">Help Center</span>
-          </div>
-        </div>
       </main>
     </div>
   );

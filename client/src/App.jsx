@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -8,16 +10,20 @@ import Settings from './pages/Settings.jsx';
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/"               element={<Navigate to="/login" replace />} />
-      <Route path="/login"          element={<Login />} />
-      <Route path="/signup"         element={<Signup />} />
-      <Route path="/dashboard"      element={<Dashboard />} />
-      <Route path="/products"       element={<Products />} />
-      <Route path="/products/new"   element={<ProductForm />} />
-      <Route path="/products/:id/edit" element={<ProductForm />} />
-      <Route path="/settings"       element={<Settings />} />
-      <Route path="*"               element={<Navigate to="/login" replace />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/"      element={<Navigate to="/login" replace />} />
+        <Route path="/login"  element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/products"  element={<ProtectedRoute><Products /></ProtectedRoute>} />
+        <Route path="/products/new"       element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
+        <Route path="/products/:id/edit"  element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }

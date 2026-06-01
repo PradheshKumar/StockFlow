@@ -1,54 +1,36 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
 import TopBar from '../components/TopBar';
+import { dashboardApi } from '../lib/api';
 
-const LOW_STOCK = [
-  {
-    id: 1,
-    name: 'Vanguard Tech Runner',
-    sku: 'VT-789-RED',
-    qty: 12,
-    threshold: 50,
-    status: 'critical',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDZcCBl1egAdl7YA_Fmn8QDzzmWyzNv8NYSE2YREtXSzlKIQchgDw7DEROLAf_6WSKJDqIjJWQkv4xNlllGEmdCSYTYPNKGO4g8vC1S-MvmFJtog9iZQ_vEPCoTMNO4_mTc8dFnPD0dA7JbwA88xCH7sy4yR1HbtJABwfSn21HnyWc1D9Y3JqNQ0DAz_ZudEa4Wylf5ojt9ozR9wnqakUVC9punlDfqKCX-VU1V8_gA-Ed3L8JZxaQfcr6GFIfiSDQW3ILD9F1FnEAx',
-  },
-  {
-    id: 2,
-    name: 'Chronos Minimalist Watch',
-    sku: 'CW-001-LHR',
-    qty: 8,
-    threshold: 25,
-    status: 'critical',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzRSQ-VLmHjRjCCKmP54kfhwq44k4ycFnypkTFMrXiL4XyucUtixqwuI0Se0Kwd1QL1PEq7jHwJqiV376-0a4M6WiJ9wEasWCACTV7zToHrGiZvP5aORbEbUb8P1jXS2xIc89LhcXp9HrdOvojlY8_RIpb1ZPhDfvFqH--fC-6p_TJKu-bvLAbxVcg3JRfAepNsctRZvG-1FbpMcoP3fTh3MUSx66T1xj6aivWMxc06fK2RJinDfV7_Ox176nUNZNgVsWVLQEyLJpz',
-  },
-  {
-    id: 3,
-    name: 'Aura Noise Cancelling',
-    sku: 'ANC-X4-BLK',
-    qty: 34,
-    threshold: 40,
-    status: 'low',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB-ynBVJLdcJJc_bm0uC3H3MfNGewKDgA2puhh09jplHLWnCx4vWoSKSiZKBwHacx4FxbAeNL0pBSQhHbQwMY3doGfGOuoNl17iVRj3c6gVkh0XMtgiogPIQFLyQxgebVOPeDU164fBnych_lL0oBi9nB_DNOl3bmF20qHsxzMXGTtbk-Z6w8kmcQVxWWX2zcOzuvLiOQy5qY_RdDjp9N6LhuKQT8-7KcaNt7zqaDAN0JpTCRUeBGYILW2t8Q06GiLExZWhrxhsBO5k',
-  },
-  {
-    id: 4,
-    name: 'Optic Prime 50mm',
-    sku: 'OP-LENS-50',
-    qty: 15,
-    threshold: 20,
-    status: 'low',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuARwXuKM5w54RdqFlhvjk9KbsG4tXkujftsvNqsgiyqdVjV3kvImYN6ZYtxB8HfBo9M6l-933CtVOgZgD8psLA1kCjqxkHiS2Q7dp437js1S1JwrAAkVYdWTt6aflUz5zDEoK3fI8Z4FSXVPftuXHdhSW5RVIZ8xpT6IfaaVmBbyEEupfcuiH-xnHWvsD3jNWGmZfWXg5ECZI5YffNst6xsIBBZeEJ5WIMX7NACLt73FIXsWQKNt1CI8EnKmdgGoEbUsFlAz9lsaxpe',
-  },
-];
-
-function StatusBadge({ status }) {
-  if (status === 'critical')
-    return <span className="px-2 py-1 rounded-full bg-error-container text-on-error-container text-[11px] font-bold uppercase">Critical</span>;
-  return <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold uppercase">Low Stock</span>;
+function StatusBadge({ qty, threshold }) {
+  const n = parseInt(qty, 10) || 0;
+  const isCritical = n === 0 || n / threshold < 0.4;
+  return isCritical
+    ? <span className="px-2 py-1 rounded-full bg-error-container text-on-error-container text-[11px] font-bold uppercase">Critical</span>
+    : <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold uppercase">Low Stock</span>;
 }
 
 export default function Dashboard() {
-  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [search, setSearch]   = useState('');
+
+  useEffect(() => {
+    dashboardApi.getSummary()
+      .then(res => setData(res.data))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = (data?.lowStockProducts ?? []).filter(p =>
+    !search ||
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.sku.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <AppLayout>
@@ -67,90 +49,118 @@ export default function Dashboard() {
 
       <main className="p-lg">
         <div className="max-w-[1440px] mx-auto space-y-lg">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
-            <div className="bg-surface border border-outline-variant p-lg rounded-xl flex items-center gap-lg group hover:border-primary transition-colors">
-              <div className="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed-variant transition-transform group-hover:scale-110">
-                <span className="material-symbols-outlined ms-filled text-[28px]">inventory</span>
-              </div>
-              <div>
-                <p className="text-label-md text-on-surface-variant uppercase tracking-wider">Total Products</p>
-                <h3 className="text-display font-bold text-on-surface leading-none mt-1">1,284</h3>
-              </div>
-            </div>
 
-            <div className="bg-surface border border-outline-variant p-lg rounded-xl flex items-center gap-lg group hover:border-primary transition-colors">
-              <div className="w-14 h-14 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant transition-transform group-hover:scale-110">
-                <span className="material-symbols-outlined ms-filled text-[28px]">package_2</span>
-              </div>
-              <div>
-                <p className="text-label-md text-on-surface-variant uppercase tracking-wider">Total Inventory Units</p>
-                <h3 className="text-display font-bold text-on-surface leading-none mt-1">14,920</h3>
-              </div>
+          {loading && (
+            <div className="flex items-center justify-center py-xl text-on-surface-variant">
+              <svg className="animate-spin h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Loading dashboard…
             </div>
-          </div>
+          )}
 
-          <section className="bg-surface border border-outline-variant rounded-xl overflow-hidden">
-            <div className="px-lg py-md border-b border-outline-variant flex justify-between items-center bg-surface-bright">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined ms-filled text-error">warning</span>
-                <h4 className="text-headline-md text-on-surface">Low Stock Items</h4>
-              </div>
-              <button className="text-label-md text-primary font-bold hover:underline">View All Alerts</button>
+          {error && (
+            <div className="px-lg py-md bg-error-container text-on-error-container rounded-xl flex items-center gap-2">
+              <span className="material-symbols-outlined">error</span>
+              {error}
             </div>
+          )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-surface-container-low">
-                    {['Product Name', 'SKU', 'Quantity', 'Threshold', 'Status', 'Action'].map((h, i) => (
-                      <th key={h} className={`px-lg py-3 text-label-md text-on-surface-variant uppercase tracking-wider ${i === 5 ? 'text-right' : 'text-left'}`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant">
-                  {LOW_STOCK.filter(p =>
-                    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
-                  ).map(item => (
-                    <tr key={item.id} className="hover:bg-surface-container-low transition-colors hover:translate-x-1">
-                      <td className="px-lg py-md">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
-                            <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-                          </div>
-                          <span className="text-body-md text-on-surface font-semibold">{item.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-lg py-md font-mono text-mono-sm text-on-surface-variant">{item.sku}</td>
-                      <td className="px-lg py-md">
-                        <span className={item.status === 'critical' ? 'text-error font-bold' : 'text-amber-500 font-bold'}>{item.qty}</span>
-                      </td>
-                      <td className="px-lg py-md text-on-surface-variant">{item.threshold}</td>
-                      <td className="px-lg py-md"><StatusBadge status={item.status} /></td>
-                      <td className="px-lg py-md text-right">
-                        <button className="px-4 py-2 bg-primary text-white rounded-lg text-label-md hover:bg-primary-container transition-colors">Restock</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {data && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
+                <div className="bg-surface border border-outline-variant p-lg rounded-xl flex items-center gap-lg group hover:border-primary transition-colors">
+                  <div className="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed-variant transition-transform group-hover:scale-110">
+                    <span className="material-symbols-outlined ms-filled text-[28px]">inventory</span>
+                  </div>
+                  <div>
+                    <p className="text-label-md text-on-surface-variant uppercase tracking-wider">Total Products</p>
+                    <h3 className="text-display font-bold text-on-surface leading-none mt-1">{data.totalProducts.toLocaleString()}</h3>
+                  </div>
+                </div>
 
-            <div className="px-lg py-md bg-surface-container-low border-t border-outline-variant flex justify-between items-center">
-              <p className="text-label-md text-on-surface-variant">Showing {LOW_STOCK.length} low stock items</p>
-              <div className="flex gap-2">
-                <button disabled className="p-1 hover:bg-surface-container-high rounded transition-colors disabled:opacity-30">
-                  <span className="material-symbols-outlined">chevron_left</span>
-                </button>
-                <button className="p-1 hover:bg-surface-container-high rounded transition-colors">
-                  <span className="material-symbols-outlined">chevron_right</span>
-                </button>
+                <div className="bg-surface border border-outline-variant p-lg rounded-xl flex items-center gap-lg group hover:border-primary transition-colors">
+                  <div className="w-14 h-14 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant transition-transform group-hover:scale-110">
+                    <span className="material-symbols-outlined ms-filled text-[28px]">package_2</span>
+                  </div>
+                  <div>
+                    <p className="text-label-md text-on-surface-variant uppercase tracking-wider">Total Inventory Units</p>
+                    <h3 className="text-display font-bold text-on-surface leading-none mt-1">{data.totalInventory.toLocaleString()}</h3>
+                  </div>
+                </div>
               </div>
-            </div>
-          </section>
+
+              <section className="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+                <div className="px-lg py-md border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined ms-filled text-error">warning</span>
+                    <h4 className="text-headline-md text-on-surface">Low Stock Items</h4>
+                  </div>
+                  <button onClick={() => navigate('/products')} className="text-label-md text-primary font-bold hover:underline">View All Products</button>
+                </div>
+
+                {data.lowStockProducts.length === 0 ? (
+                  <div className="px-lg py-xl text-center text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[48px] mb-md block">check_circle</span>
+                    <p className="text-body-md">All products are well stocked!</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-surface-container-low">
+                          {['Product Name', 'SKU', 'Quantity', 'Threshold', 'Status', 'Action'].map((h, i) => (
+                            <th key={h} className={`px-lg py-3 text-label-md text-on-surface-variant uppercase tracking-wider ${i === 5 ? 'text-right' : 'text-left'}`}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant">
+                        {filtered.map(item => (
+                          <tr key={item.id} className="hover:bg-surface-container-low transition-colors">
+                            <td className="px-lg py-md">
+                              <span className="text-body-md text-on-surface font-semibold">{item.name}</span>
+                            </td>
+                            <td className="px-lg py-md font-mono text-mono-sm text-on-surface-variant">{item.sku}</td>
+                            <td className="px-lg py-md">
+                              <span className={parseInt(item.quantity, 10) === 0 || parseInt(item.quantity, 10) / item.lowStockThreshold < 0.4 ? 'text-error font-bold' : 'text-amber-500 font-bold'}>
+                                {item.quantity}
+                              </span>
+                            </td>
+                            <td className="px-lg py-md text-on-surface-variant">{item.lowStockThreshold}</td>
+                            <td className="px-lg py-md">
+                              <StatusBadge qty={item.quantity} threshold={item.lowStockThreshold} />
+                            </td>
+                            <td className="px-lg py-md text-right">
+                              <button
+                                onClick={() => navigate(`/products/${item.id}/edit`)}
+                                className="px-4 py-2 bg-primary text-white rounded-lg text-label-md hover:bg-primary-container transition-colors"
+                              >
+                                Restock
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="px-lg py-md bg-surface-container-low border-t border-outline-variant flex justify-between items-center">
+                  <p className="text-label-md text-on-surface-variant">
+                    Showing {filtered.length} of {data.lowStockProducts.length} low stock item{data.lowStockProducts.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </main>
 
-      <button className="fixed bottom-lg right-lg w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all group z-50">
+      <button
+        onClick={() => navigate('/products/new')}
+        className="fixed bottom-lg right-lg w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all group z-50"
+      >
         <span className="material-symbols-outlined text-[28px]">add</span>
         <span className="absolute right-full mr-4 px-3 py-1 bg-inverse-surface text-inverse-on-surface text-label-md rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Add Item</span>
       </button>

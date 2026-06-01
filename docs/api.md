@@ -272,7 +272,7 @@ Creates a new product. `organizationId` and `updatedBy` are set automatically fr
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | name | string | yes | |
-| sku | string | yes | Must be unique within the system |
+| sku | string | yes | Must be unique within the organization |
 | description | string | no | Defaults to `""` |
 | quantity | string | no | Defaults to `"0"` |
 | lowStockThreshold | integer | no | Defaults to `10` |
@@ -291,7 +291,7 @@ Creates a new product. `organizationId` and `updatedBy` are set automatically fr
 
 | Status | Message |
 |--------|---------|
-| 409 | SKU already exists |
+| 409 | SKU already exists in this organization |
 | 422 | Validation errors array |
 
 ---
@@ -321,7 +321,7 @@ Updates one or more fields on an existing product. Send only the fields you want
 | Status | Message |
 |--------|---------|
 | 404 | Product not found |
-| 409 | SKU already exists |
+| 409 | SKU already exists in this organization |
 
 ---
 
