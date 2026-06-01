@@ -1,34 +1,23 @@
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import Home from './pages/Home.jsx';
-import About from './pages/About.jsx';
-import './App.css';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login.jsx';
+import Signup from './pages/Signup.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Products from './pages/Products.jsx';
+import ProductForm from './pages/ProductForm.jsx';
+import Settings from './pages/Settings.jsx';
 
 export default function App() {
-  const { pathname } = useLocation();
-
   return (
-    <div className="app">
-      <header className="navbar">
-        <div className="navbar__brand">
-          <span className="navbar__logo">📈</span>
-          <span className="navbar__title">StockFlow</span>
-        </div>
-        <nav className="navbar__links">
-          <Link className={`nav-link ${pathname === '/'       ? 'nav-link--active' : ''}`} to="/">Home</Link>
-          <Link className={`nav-link ${pathname === '/about'  ? 'nav-link--active' : ''}`} to="/about">About</Link>
-        </nav>
-      </header>
-
-      <main className="main">
-        <Routes>
-          <Route path="/"      element={<Home />} />
-          <Route path="/about" element={<About />} />
-        </Routes>
-      </main>
-
-      <footer className="footer">
-        <p>StockFlow &copy; {new Date().getFullYear()} — Express · SQLite · Drizzle · React</p>
-      </footer>
-    </div>
+    <Routes>
+      <Route path="/"               element={<Navigate to="/login" replace />} />
+      <Route path="/login"          element={<Login />} />
+      <Route path="/signup"         element={<Signup />} />
+      <Route path="/dashboard"      element={<Dashboard />} />
+      <Route path="/products"       element={<Products />} />
+      <Route path="/products/new"   element={<ProductForm />} />
+      <Route path="/products/:id/edit" element={<ProductForm />} />
+      <Route path="/settings"       element={<Settings />} />
+      <Route path="*"               element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }

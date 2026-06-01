@@ -1,6 +1,6 @@
 # StockFlow
 
-> Fullstack boilerplate — **Express · SQLite · Drizzle ORM · React + Vite**
+Inventory management app — **Express · SQLite · Drizzle ORM · React + Vite**
 
 ---
 
@@ -9,28 +9,26 @@
 ```
 StockFlow/
 ├── client/                  # React SPA (Vite)
-│   ├── public/
 │   ├── src/
 │   │   ├── lib/api.js       # Fetch wrapper for all API calls
-│   │   ├── pages/           # Page components (Home, About)
-│   │   ├── App.jsx / App.css
-│   │   ├── main.jsx
+│   │   ├── pages/           # Page components
+│   │   ├── App.jsx
 │   │   └── index.css        # Global design tokens
-│   ├── index.html
 │   └── vite.config.js       # Dev proxy → Express :3001
 │
 ├── server/                  # Express REST API
 │   ├── src/
 │   │   ├── db/
-│   │   │   ├── client.js    # Drizzle + better-sqlite3 setup
-│   │   │   ├── schema.js    # Table definitions (users, stocks, portfolio)
+│   │   │   ├── client.js    # Drizzle + libsql setup
+│   │   │   ├── schema.js    # Table definitions (organizations, users, products)
 │   │   │   ├── migrate.js   # Migration runner
 │   │   │   └── seed.js      # Dev seed data
 │   │   ├── middleware/
+│   │   │   ├── authenticate.js  # JWT guard
 │   │   │   ├── errorHandler.js
-│   │   │   └── validate.js  # Lightweight validation factory
-│   │   ├── routes/          # users.js, stocks.js, index.js
-│   │   ├── controllers/     # usersController.js, stocksController.js
+│   │   │   └── validate.js      # Lightweight validation factory
+│   │   ├── routes/          # auth, products, dashboard, settings
+│   │   ├── controllers/
 │   │   ├── app.js
 │   │   └── index.js
 │   ├── drizzle/             # Generated SQL migrations (git-tracked)
@@ -38,6 +36,8 @@ StockFlow/
 │   ├── drizzle.config.js
 │   └── .env
 │
+├── docs/
+│   └── api.md               # Full API reference (request & response schemas)
 ├── package.json             # Root workspace + concurrently scripts
 └── .gitignore
 ```
@@ -46,62 +46,80 @@ StockFlow/
 
 ## Quick Start
 
-### 1. Install all dependencies
+### 1. Install dependencies
 ```bash
 npm install
 ```
 
-### 2. Generate & apply DB migrations
+### 2. Configure environment
+
+Copy the example and set a strong `JWT_SECRET`:
 ```bash
-npm run db:generate   # creates SQL files in server/drizzle/
-npm run db:migrate    # applies them to server/data/stockflow.db
+cp server/.env.example server/.env
 ```
 
-### 3. (Optional) Seed sample data
+```
+PORT=3001
+NODE_ENV=development
+DATABASE_URL=./data/stockflow.db
+JWT_SECRET=your_long_random_secret_here
+JWT_EXPIRES_IN=7d
+```
+
+### 3. Apply DB migrations
+```bash
+npm run db:migrate
+```
+
+### 4. (Optional) Seed sample data
 ```bash
 node server/src/db/seed.js
 ```
 
-### 4. Start both servers
+### 5. Start both servers
 ```bash
 npm run dev
 ```
 
-| Service  | URL                           |
-|----------|-------------------------------|
-| React    | http://localhost:5173          |
-| Express  | http://localhost:3001          |
-| Health   | http://localhost:3001/health   |
+| Service | URL |
+|---------|-----|
+| React   | http://localhost:5173 |
+| Express | http://localhost:3001 |
+| Health  | http://localhost:3001/health |
 
 ---
 
-## API Reference
+## API Overview
 
-### Stocks
-| Method | Endpoint            | Description              |
-|--------|---------------------|--------------------------|
-| GET    | `/api/stocks`       | List all (supports `?search=`) |
-| GET    | `/api/stocks/:id`   | Get by ID                |
-| POST   | `/api/stocks`       | Create stock             |
-| PUT    | `/api/stocks/:id`   | Update stock             |
-| DELETE | `/api/stocks/:id`   | Delete stock             |
+Full request/response documentation → **[docs/api.md](docs/api.md)**
 
-### Users
-| Method | Endpoint           | Description   |
-|--------|--------------------|---------------|
-| GET    | `/api/users`       | List all      |
-| GET    | `/api/users/:id`   | Get by ID     |
-| POST   | `/api/users`       | Create user   |
-| PUT    | `/api/users/:id`   | Update user   |
-| DELETE | `/api/users/:id`   | Delete user   |
+| Group | Method | Endpoint | Auth | Description |
+|-------|--------|----------|------|-------------|
+| Auth | POST | `/api/auth/signup` | — | Create organization + user, get JWT |
+| Auth | POST | `/api/auth/login` | — | Login, get JWT |
+| Auth | POST | `/api/auth/logout` | — | Stateless logout |
+| Auth | GET | `/api/auth/me` | ✓ | Current user |
+| Dashboard | GET | `/api/dashboard` | ✓ | Totals + low-stock list |
+| Products | GET | `/api/products` | ✓ | List products (`?search=`) |
+| Products | GET | `/api/products/:id` | ✓ | Product detail |
+| Products | POST | `/api/products` | ✓ | Create product |
+| Products | PUT | `/api/products/:id` | ✓ | Update product |
+| Products | DELETE | `/api/products/:id` | ✓ | Delete product |
+| Inventory | POST | `/api/products/:id/adjust-stock` | ✓ | Adjust quantity |
+| Settings | GET | `/api/settings` | ✓ | Get org settings |
+| Settings | PUT | `/api/settings` | ✓ | Update org settings |
+
+Protected endpoints (✓) require `Authorization: Bearer <token>`.
 
 ---
 
 ## Other Scripts
 
-| Command              | Description                        |
-|----------------------|------------------------------------|
-| `npm run db:studio`  | Open Drizzle Studio (visual DB UI) |
-| `npm run dev:server` | Run only the Express server        |
-| `npm run dev:client` | Run only the Vite dev server       |
-| `npm run build`      | Build the React SPA for production |
+| Command | Description |
+|---------|-------------|
+| `npm run db:generate` | Regenerate SQL migrations from schema changes |
+| `npm run db:migrate` | Apply pending migrations |
+| `npm run db:studio` | Open Drizzle Studio (visual DB browser) |
+| `npm run dev:server` | Run only the Express server |
+| `npm run dev:client` | Run only the Vite dev server |
+| `npm run build` | Build the React SPA for production |
