@@ -1,12 +1,22 @@
 {
   "name": "stockflow",
   "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "description": "StockFlow – Fullstack Boilerplate (Express + SQLite/Drizzle + React/Vite)",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently -n SERVER,CLIENT -c cyan,magenta \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client",
+    "db:generate": "npm run db:generate --workspace=server",
+    "db:migrate": "npm run db:migrate --workspace=server",
+    "db:studio": "npm run db:studio --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
