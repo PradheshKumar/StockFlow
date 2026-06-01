@@ -1,6 +1,19 @@
 # StockFlow
 
-Inventory management app — **Express · SQLite · Drizzle ORM · React + Vite**
+A minimal multi-tenant SaaS inventory management app — sign up, manage products, track stock levels, and catch low-stock items at a glance.
+
+**Stack:** Express · SQLite · Drizzle ORM · React · Vite · Tailwind CSS
+
+---
+
+## Features
+
+- **Auth** — Email/password signup (creates an organization), login, JWT-protected sessions
+- **Products** — Full CRUD with name, SKU (unique per org), quantity, cost/sell price, low-stock threshold
+- **Inventory** — Inline stock adjustment (+/- units with optional note) directly from the product list
+- **Dashboard** — Total product count, total inventory units, and a live low-stock table
+- **Settings** — Organization-wide default low-stock threshold
+- **Multi-tenant** — All data is scoped to the user's organization; no cross-tenant data leakage
 
 ---
 
@@ -10,10 +23,12 @@ Inventory management app — **Express · SQLite · Drizzle ORM · React + Vite*
 StockFlow/
 ├── client/                  # React SPA (Vite)
 │   ├── src/
+│   │   ├── context/         # AuthContext (JWT + user state)
+│   │   ├── components/      # AppLayout, Sidebar, TopBar, ProtectedRoute
+│   │   ├── pages/           # Dashboard, Products, ProductForm, Settings, Login, Signup
 │   │   ├── lib/api.js       # Fetch wrapper for all API calls
-│   │   ├── pages/           # Page components
-│   │   ├── App.jsx
-│   │   └── index.css        # Global design tokens
+│   │   ├── App.jsx          # Routes
+│   │   └── index.css        # Tailwind + design tokens
 │   └── vite.config.js       # Dev proxy → Express :3001
 │
 ├── server/                  # Express REST API
@@ -66,6 +81,8 @@ JWT_SECRET=your_long_random_secret_here
 JWT_EXPIRES_IN=7d
 ```
 
+> The server will refuse to start if `JWT_SECRET` is not set.
+
 ### 3. Apply DB migrations
 ```bash
 npm run db:migrate
@@ -105,7 +122,7 @@ Full request/response documentation → **[docs/api.md](docs/api.md)**
 | Products | POST | `/api/products` | ✓ | Create product |
 | Products | PUT | `/api/products/:id` | ✓ | Update product |
 | Products | DELETE | `/api/products/:id` | ✓ | Delete product |
-| Inventory | POST | `/api/products/:id/adjust-stock` | ✓ | Adjust quantity |
+| Inventory | POST | `/api/products/:id/adjust-stock` | ✓ | Adjust stock (+/- units) |
 | Settings | GET | `/api/settings` | ✓ | Get org settings |
 | Settings | PUT | `/api/settings` | ✓ | Update org settings |
 
@@ -115,23 +132,33 @@ Protected endpoints (✓) require `Authorization: Bearer <token>`.
 
 ## Security
 
-The following protections are implemented in the backend:
-
 | Area | Measure |
 |------|---------|
-| **Security headers** | [`helmet`](https://helmetjs.github.io/) sets `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, removes `X-Powered-By`, and more |
+| **Security headers** | `helmet` sets `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, removes `X-Powered-By` |
 | **Brute-force protection** | `express-rate-limit` caps `/api/auth/login` and `/api/auth/signup` at 20 requests per 15 minutes per IP |
-| **JWT authentication** | All non-auth endpoints require a signed JWT (`Authorization: Bearer <token>`). The server refuses to start if `JWT_SECRET` is unset. |
-| **Password hashing** | Passwords are hashed with bcrypt (cost factor 10) and never returned in any response |
-| **Timing-safe login** | bcrypt comparison always runs regardless of whether the email exists, preventing timing-based user enumeration |
-| **SQL injection** | All queries go through Drizzle ORM's parameterized query builder — no raw SQL with user input |
-| **Tenant isolation** | Every product/settings query is scoped to `organizationId` from the JWT — users cannot access another org's data |
-| **Input validation** | Required fields, email format (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`), non-negative numbers, and integer-only stock adjustments are validated before any DB operation |
-| **Email normalization** | Emails are lowercased and trimmed on signup and login, preventing duplicate accounts via case variation |
-| **Mass assignment** | Controllers destructure only whitelisted fields from request bodies — extra fields are silently ignored |
-| **Request size limit** | JSON bodies capped at 10 KB (`express.json({ limit: '10kb' })`) |
-| **CORS** | Origin restricted to `CLIENT_ORIGIN` env var (defaults to `http://localhost:5173`); methods and headers explicitly whitelisted |
-| **Error leakage** | 5xx error messages are replaced with a generic string in `NODE_ENV=production`; stack traces only appear in development |
+| **JWT authentication** | All non-auth endpoints require a signed JWT. Server refuses to start if `JWT_SECRET` is unset. |
+| **Password hashing** | bcrypt (cost factor 10); hash never returned in any response |
+| **Timing-safe login** | bcrypt always runs regardless of whether the email exists — prevents user enumeration via timing |
+| **SQL injection** | All queries use Drizzle ORM's parameterized query builder — no raw SQL with user input |
+| **Tenant isolation** | Every product/settings query is scoped to `organizationId` from the JWT |
+| **Input validation** | Required fields, email format, non-negative numbers, and integer-only stock adjustments validated before DB ops |
+| **Email normalization** | Emails are lowercased and trimmed on signup and login |
+| **Mass assignment** | Controllers destructure only whitelisted fields — extra body keys are ignored |
+| **Request size limit** | JSON bodies capped at 10 KB |
+| **CORS** | Origin restricted to `CLIENT_ORIGIN` env var; methods and headers explicitly whitelisted |
+| **Error leakage** | 5xx messages replaced with generic string in production; stack traces only in development |
+
+---
+
+## AI Usage Declaration
+
+This project was built with AI assistance. The tools used and their roles:
+
+| Tool | Role |
+|------|------|
+| **[Stitch](https://stitch.withgoogle.com)** | UI design — used to design and generate the initial screen layouts, component structure, and visual design system |
+| **[Claude Code](https://claude.ai/code)** | Frontend development — used to build and iterate on the React frontend: pages, components, routing, API integration, and state management |
+| **[Claude Code](https://claude.ai/code)** | Backend development — used as a development assistant for the Express API: endpoint design, JWT authentication, security hardening, Drizzle schema, and database migrations |
 
 ---
 
