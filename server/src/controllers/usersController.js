@@ -13,7 +13,7 @@ export async function getAll(_req, res, next) {
 // GET /api/users/:id
 export async function getById(req, res, next) {
   try {
-    const [user] = await db.select().from(users).where(eq(users.id, Number(req.params.id)));
+    const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, data: user });
   } catch (err) { next(err); }
@@ -22,8 +22,11 @@ export async function getById(req, res, next) {
 // POST /api/users
 export async function create(req, res, next) {
   try {
-    const { name, email } = req.body;
-    const [created] = await db.insert(users).values({ name, email }).returning();
+    const { name, email, passwordHash, organizationId } = req.body;
+    const [created] = await db
+      .insert(users)
+      .values({ name, email, passwordHash, organizationId })
+      .returning();
     res.status(201).json({ success: true, data: created });
   } catch (err) {
     if (err.message?.includes('UNIQUE')) {
@@ -36,11 +39,16 @@ export async function create(req, res, next) {
 // PUT /api/users/:id
 export async function update(req, res, next) {
   try {
-    const { name, email } = req.body;
+    const { name, email, passwordHash } = req.body;
     const [updated] = await db
       .update(users)
-      .set({ ...(name && { name }), ...(email && { email }), updatedAt: new Date().toISOString() })
-      .where(eq(users.id, Number(req.params.id)))
+      .set({
+        ...(name         && { name }),
+        ...(email        && { email }),
+        ...(passwordHash && { passwordHash }),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, req.params.id))
       .returning();
 
     if (!updated) return res.status(404).json({ success: false, message: 'User not found' });
@@ -53,7 +61,7 @@ export async function remove(req, res, next) {
   try {
     const [deleted] = await db
       .delete(users)
-      .where(eq(users.id, Number(req.params.id)))
+      .where(eq(users.id, req.params.id))
       .returning();
 
     if (!deleted) return res.status(404).json({ success: false, message: 'User not found' });

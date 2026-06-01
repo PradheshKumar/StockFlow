@@ -1,38 +1,71 @@
-/**
- * seed.js — Populate the DB with sample data for development.
- *
- * Run with:  node src/db/seed.js  (from the server workspace)
- */
-
 import 'dotenv/config';
-import { db, sqlite } from './client.js';
-import { users, stocks } from './schema.js';
+import { db, client } from './client.js';
+import { organizations, users, products } from './schema.js';
 
 async function seed() {
   console.log('🌱 Seeding database...');
 
+  await db.delete(products);
   await db.delete(users);
-  await db.delete(stocks);
+  await db.delete(organizations);
 
-  await db.insert(users).values([
-    { name: 'Alice Trader', email: 'alice@stockflow.dev' },
-    { name: 'Bob Investor', email: 'bob@stockflow.dev' },
-  ]);
+  const [org] = await db
+    .insert(organizations)
+    .values({ name: 'Acme Corp', defaultLowStockThreshold: 10 })
+    .returning();
 
-  await db.insert(stocks).values([
-    { symbol: 'AAPL',  name: 'Apple Inc.',        price: 189.30 },
-    { symbol: 'MSFT',  name: 'Microsoft Corp.',    price: 415.20 },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.',      price: 175.50 },
-    { symbol: 'TSLA',  name: 'Tesla Inc.',         price: 177.80 },
-    { symbol: 'NVDA',  name: 'NVIDIA Corporation', price: 875.00 },
+  const [admin] = await db
+    .insert(users)
+    .values({
+      name:           'Admin User',
+      email:          'admin@stockflow.dev',
+      passwordHash:   '$2b$10$placeholder_hash',
+      organizationId: org.id,
+    })
+    .returning();
+
+  await db.insert(products).values([
+    {
+      name:              'Wireless Mouse',
+      sku:               'WM-001',
+      description:       'Ergonomic wireless mouse',
+      quantity:          '50',
+      lowStockThreshold: 10,
+      costPrice:         15.00,
+      sellPrice:         29.99,
+      organizationId:    org.id,
+      updatedBy:         admin.id,
+    },
+    {
+      name:              'USB-C Cable',
+      sku:               'UC-002',
+      description:       'High-speed USB-C charging cable',
+      quantity:          '200',
+      lowStockThreshold: 20,
+      costPrice:         5.00,
+      sellPrice:         12.99,
+      organizationId:    org.id,
+      updatedBy:         admin.id,
+    },
+    {
+      name:              'Mechanical Keyboard',
+      sku:               'MK-003',
+      description:       'Tenkeyless mechanical keyboard',
+      quantity:          '8',
+      lowStockThreshold: 10,
+      costPrice:         45.00,
+      sellPrice:         99.99,
+      organizationId:    org.id,
+      updatedBy:         admin.id,
+    },
   ]);
 
   console.log('✅ Seed complete.');
-  sqlite.close();
+  client.close();
 }
 
 seed().catch((err) => {
   console.error('❌ Seed failed:', err);
-  sqlite.close();
+  client.close();
   process.exit(1);
 });
