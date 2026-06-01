@@ -4,13 +4,31 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { rateLimit } from 'express-rate-limit';
 
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
 import apiRouter from './routes/index.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const clientDist = path.resolve(__dirname, '../../client/dist');
+
 
 const app = express();
 
 // ── Security headers ──────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'"],
+      styleSrc:   ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:     ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
 
 // ── CORS ──────────────────────────────────────────────────
 app.use(cors({
@@ -44,6 +62,14 @@ app.use('/api', apiRouter);
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 );
+
+// ── Static frontend (production only) ────────────────────
+if (process.env.NODE_ENV === 'production' && fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // ── Error handling (keep last) ────────────────────────────
 app.use(notFound);
